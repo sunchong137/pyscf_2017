@@ -10,6 +10,7 @@ Adeline C. Sun Apr. 11 Made some corrections. Added the RDM function
 def Tri_diag(a1, b1):
     mat = np.diag(b1, -1) + np.diag(a1, 0) + np.diag(b1, 1)
     e, w = np.linalg.eigh(mat)
+    # w[:, i] is the ith eigenvector
     return e, w
 
 
@@ -153,24 +154,28 @@ def ftlan_rdm1s1c(qud, hop, v0, T, norb, m=60, Min_b=1e-9, Min_m=5, kB=1, norm=n
     krylov = np.asarray(krylov)
     eps, phi = Tri_diag(a, b)
     eps = eps-eps[0]
+    l = len(eps)
+    estate = krylov.T.dot(phi)
+    # estate[:, i] is the ith eigenstate
+        
     coef = np.exp(-beta*eps/2.)*phi[0, :]
     eps = np.exp(-beta*eps)
-    l = len(eps)
     Z = np.sum(eps*phi[0, :]**2.)
-    for cnt1 in range(l):
-        tmpa, tmpb = qud(krylov[cnt1, :], krylov[cnt1,:])
-        for i in range(l):
-            for j in range(l):
-                rdma += (coef[i]*coef[j]*phi[cnt1,i]*phi[cnt1,j])*tmpa
-                rdmb += (coef[i]*coef[j]*phi[cnt1,i]*phi[cnt1,j])*tmpb
-        for cnt2 in range(cnt1+1, l):
-            tmpa, tmpb = qud(krylov[cnt1, :], krylov[cnt2,:])
-            for i in range(l):
-                for j in range(l):
-                    rdma += 2.*(coef[i]*coef[j]*phi[cnt1,i]*phi[cnt2,j])*tmpa
-                    rdmb += 2.*(coef[i]*coef[j]*phi[cnt1,i]*phi[cnt2,j])*tmpb
+    psi = estate.dot(coef.T)
+#   for cnt1 in range(l):
+#       tmpa, tmpb = qud(krylov[cnt1, :], krylov[cnt1,:])
+#       for i in range(l):
+#           for j in range(l):
+#               rdma += (coef[i]*coef[j]*phi[cnt1,i]*phi[cnt1,j])*tmpa
+#               rdmb += (coef[i]*coef[j]*phi[cnt1,i]*phi[cnt1,j])*tmpb
+#       for cnt2 in range(cnt1+1, l):
+#           tmpa, tmpb = qud(krylov[cnt1, :], krylov[cnt2,:])
+#           for i in range(l):
+#               for j in range(l):
+#                   rdma += 2.*(coef[i]*coef[j]*phi[cnt1,i]*phi[cnt2,j])*tmpa
+#                   rdmb += 2.*(coef[i]*coef[j]*phi[cnt1,i]*phi[cnt2,j])*tmpb
 
-
+    rdma, rdmb = qud(psi, psi)
     log.section("Partition function:%10.10f"%Z)
     log.section("1 particle reduced density matrices from v1:\n%s\n%s"%(rdma/Z, rdmb/Z))
     return rdma, rdmb, Z
@@ -254,33 +259,38 @@ def ftlan_rdm12s1c(qud, hop, v0, T, norb, m=60, Min_b=1e-9, Min_m=5, kB=1, norm=
     krylov = np.asarray(krylov)
     eps, phi = Tri_diag(a, b)
     eps = eps-eps[0]
+    l = len(eps)
+    estate = krylov.T.dot(phi)
     coef = np.exp(-beta*eps/2.)*phi[0, :]
     eps = np.exp(-beta*eps)
-    l = len(eps)
     Z = np.sum(eps*phi[0, :]**2.)
+
+    psi = estate.dot(coef.T)
     log.section("partition function: %10.10f"%Z)
-    for cnt1 in range(l):
+    (rdm1a, rdm1b), (rdm2aa, rdm2ab, rdm2ba, rdm2bb) = qud(psi, psi)
+
+#   for cnt1 in range(l):
 #        print "cnt1: ", cnt1
-        (tmp1a, tmp1b), (tmp2aa, tmp2ab, tmp2ba, tmp2bb) = qud(krylov[cnt1,:], krylov[cnt1,:])
-        for i in range(l):
-            for j in range(l):
-                rdm1a += (coef[i]*coef[j]*phi[cnt1,i]*phi[cnt1,j])*tmp1a
-                rdm1b += (coef[i]*coef[j]*phi[cnt1,i]*phi[cnt1,j])*tmp1b
-                rdm2aa += (coef[i]*coef[j]*phi[cnt1,i]*phi[cnt1,j])*tmp2aa
-                rdm2ab += (coef[i]*coef[j]*phi[cnt1,i]*phi[cnt1,j])*tmp2ab
-                rdm2ba += (coef[i]*coef[j]*phi[cnt1,i]*phi[cnt1,j])*tmp2ba
-                rdm2bb += (coef[i]*coef[j]*phi[cnt1,i]*phi[cnt1,j])*tmp2bb
-        for cnt2 in range(cnt1+1, l):
-            (tmp1a, tmp1b), (tmp2aa, tmp2ab, tmp2ba, tmp2bb) = qud(krylov[cnt1,:], krylov[cnt2,:])
-            for i in range(l):
-                for j in range(l):
-                    rdm1a+=2.*(coef[i]*coef[j]*phi[cnt1,i]*phi[cnt2,j])*tmp1a
-                    rdm1b+=2.*(coef[i]*coef[j]*phi[cnt1,i]*phi[cnt2,j])*tmp1b
-                    rdm2aa+=2.*(coef[i]*coef[j]*phi[cnt1,i]*phi[cnt2,j])*tmp2aa
-                    rdm2ab+=2.*(coef[i]*coef[j]*phi[cnt1,i]*phi[cnt2,j])*tmp2ab
-                    rdm2ba+=2.*(coef[i]*coef[j]*phi[cnt1,i]*phi[cnt2,j])*tmp2ba
-                    rdm2bb+=2.*(coef[i]*coef[j]*phi[cnt1,i]*phi[cnt2,j])*tmp2bb
-    
+#       (tmp1a, tmp1b), (tmp2aa, tmp2ab, tmp2ba, tmp2bb) = qud(krylov[cnt1,:], krylov[cnt1,:])
+#       for i in range(l):
+#           for j in range(l):
+#               rdm1a += (coef[i]*coef[j]*phi[cnt1,i]*phi[cnt1,j])*tmp1a
+#               rdm1b += (coef[i]*coef[j]*phi[cnt1,i]*phi[cnt1,j])*tmp1b
+#               rdm2aa += (coef[i]*coef[j]*phi[cnt1,i]*phi[cnt1,j])*tmp2aa
+#               rdm2ab += (coef[i]*coef[j]*phi[cnt1,i]*phi[cnt1,j])*tmp2ab
+#               rdm2ba += (coef[i]*coef[j]*phi[cnt1,i]*phi[cnt1,j])*tmp2ba
+#               rdm2bb += (coef[i]*coef[j]*phi[cnt1,i]*phi[cnt1,j])*tmp2bb
+#       for cnt2 in range(cnt1+1, l):
+#           (tmp1a, tmp1b), (tmp2aa, tmp2ab, tmp2ba, tmp2bb) = qud(krylov[cnt1,:], krylov[cnt2,:])
+#           for i in range(l):
+#               for j in range(l):
+#                   rdm1a+=2.*(coef[i]*coef[j]*phi[cnt1,i]*phi[cnt2,j])*tmp1a
+#                   rdm1b+=2.*(coef[i]*coef[j]*phi[cnt1,i]*phi[cnt2,j])*tmp1b
+#                   rdm2aa+=2.*(coef[i]*coef[j]*phi[cnt1,i]*phi[cnt2,j])*tmp2aa
+#                   rdm2ab+=2.*(coef[i]*coef[j]*phi[cnt1,i]*phi[cnt2,j])*tmp2ab
+#                   rdm2ba+=2.*(coef[i]*coef[j]*phi[cnt1,i]*phi[cnt2,j])*tmp2ba
+#                   rdm2bb+=2.*(coef[i]*coef[j]*phi[cnt1,i]*phi[cnt2,j])*tmp2bb
+#   
     log.section("1 particle RDMs from v12:\n%s\n%s"%(rdm1a/Z, rdm1b/Z))
     return (rdm1a, rdm1b), (rdm2aa, rdm2ab, rdm2ba, rdm2bb), Z
 

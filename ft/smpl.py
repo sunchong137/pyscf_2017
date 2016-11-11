@@ -12,7 +12,7 @@ import random
 
 def ft_ismpl_E(hop, ci0, T, genci=0, nrot=200,\
          nw=25, nsamp=2000, M=50, dr=0.5, dtheta=20.0, \
-         feprof=None, Hdiag=None, **kwargs):
+         feprof=None, Hdiag=None, verbose=0, **kwargs):
     '''
        with 1 initial vector
        note that the probability and the energy is given by the same function (ftlan)
@@ -44,7 +44,8 @@ def ft_ismpl_E(hop, ci0, T, genci=0, nrot=200,\
    
  
     # Warm-up
-    log.info("Warming up ......")
+    if verbose > 2:
+        log.info("Warming up ......")
     Nar = 0 # acceptance number
     tp = ftlan(hop, ci0, T, m=20)[1]
     for i in range(nw):
@@ -63,27 +64,26 @@ def ft_ismpl_E(hop, ci0, T, genci=0, nrot=200,\
             else:
                 continue
            
-
-    log.info("Acceptance ration for Warming-up is %6.6f"%(1.*Nar/(1.*nw)))
-    log.info("Sampling......")
+    if verbose > 2:
+        log.info("Acceptance ration for Warming-up is %6.6f"%(1.*Nar/(1.*nw)))
+        log.info("Sampling......")
     # Sampling with block average
+
     Nar = 0
     Eb = [] # the array of energies per block
     Eprofile = []
     if genci == 0:
         move = "disp"
-        log.info("Using displacement to move to the next wavefunction!")
+        if verbose > 2:
+            log.info("Using displacement to move to the next wavefunction!")
     else:
         move = "rot"
-        log.info("Using rotation to move to the next wavefunction!")
+        if verbose > 2:
+            log.info("Using rotation to move to the next wavefunction!")
     if feprof==None:
         feprof = "Eprof_%s.npy"%(move)
     e, tp = ftlan(hop, ci0, T)
     for i in range(nsamp):
-        if i == (nsamp//3):
-            log.info("one third is done, be patient...")
-        if i == (nsamp//2):
-            log.info("half is done, be patient")
         E = e/tp
         Eprofile.append(E)
         #print "E", e/tp
@@ -107,14 +107,16 @@ def ft_ismpl_E(hop, ci0, T, genci=0, nrot=200,\
     np.save(feprof, Eprofile)
     E = np.mean(Eprofile)
     ar =  (1.* Nar)/(1.* nsamp)
-    log.debug("The acceptance ratio at T=%2.6f is %6.6f"%(T, ar))
+    if verbose > 0:
+        log.debug("The acceptance ratio at T=%2.6f is %6.6f"%(T, ar))
     return E  
 
 def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
          genci=0, nrot=200, nw=25, nsamp=100, M=50, dr=0.5, \
-         dtheta=20.0, prof_file=None, Hdiag=None, **kwargs):
+         dtheta=20.0, prof_file=None, Hdiag=None, verbose=0,**kwargs):
 
-    log.info("calculating 1 particle RDMs with importance sampling!")
+    if verbose > 2:
+        log.info("calculating 1 particle RDMs with importance sampling!")
 
     '''
         qud         - function that returns <i|a^+ a|j>
@@ -145,10 +147,12 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
 
     if genci == 0:
         move = "disp"
-        log.info("Using displacement to move to the next wavefunction!")
+        if verbose > 2:
+            log.info("Using displacement to move to the next wavefunction!")
     else:
         move = "rot"
-        log.info("Using rotation to move to the next wavefunction!")
+        if verbose > 2:
+            log.info("Using rotation to move to the next wavefunction!")
 
     if prof_file is None:
         if not os.path.exists("./data"):
@@ -156,7 +160,6 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
         prof_file = "./data/RDM1_prof_%s.npy"%move
     # Warm-up
 
-    log.info("Warming up ......")
     Nar = 0 # acceptance number
     tp_e = ftE(ci0)
     for i in range(nw):
@@ -175,8 +178,6 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
             else:
                 continue
            
-    log.info("Acceptance ration for Warming-up is %6.6f"%(1.*Nar/(1.*nw)))
-    log.info("Sampling......")
     # Sampling with block average
     Nar = 0
     tp_e = ftE(ci0)
@@ -208,22 +209,24 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
 #    E = E/(1.*nsamp)
     RDM1a = RDM1a/(1.*nsamp)
     RDM1b = RDM1b/(1.*nsamp)
-    log.section("The 1 particle RDM from importance sampling is:\n %s\n %s"\
-                %(RDM1a, RDM1b))
+    if verbose > 1:
+        log.section("The 1 particle RDM from importance sampling is:\n %s\n %s"%(RDM1a, RDM1b))
 
     # save the rdm_profile
     rdm_arr = np.asarray(rdm_arr)
     np.save(prof_file, rdm_arr)
     ar =  (1.* Nar)/(1.* nsamp)
-    log.debug("The acceptance ratio at T=%2.6f is %6.6f"%(T, ar))
+    if verbose > 1:
+        log.debug("The acceptance ratio at T=%2.6f is %6.6f"%(T, ar))
     return RDM1a, RDM1b  
 
 def ft_ismpl_rdm12s(qud, hop, ci0, T, norb,\
          genci=0, nrot=200, nw=25, nsamp=100, M=50, dr=0.5, \
          dtheta=20.0, gen_prof=False, prof_file=None,\
-         Hdiag=None, **kwargs):
+         Hdiag=None, verbose=0, **kwargs):
 
-    log.info("calculating 2 particle RDMs with importance sampling!")
+    if verbose > 2:
+        log.info("calculating 2 particle RDMs with importance sampling!")
 
     '''
         qud       - function that returns <v|a_i^+ a_k^+ a_l a_j|u>
@@ -259,13 +262,14 @@ def ft_ismpl_rdm12s(qud, hop, ci0, T, norb,\
 
     if genci == 0:
         move = "disp"
-        log.info("Using displacement to move to the next wavefunction!")
+        if verbose > 2:
+            log.info("Using displacement to move to the next wavefunction!")
     else:
         move = "rot"
-        log.info("Using rotation to move to the next wavefunction!")
+        if verbose > 2:
+            log.info("Using rotation to move to the next wavefunction!")
 
     # Warm-up
-    log.info("Warming up ......")
     Nar = 0 # acceptance number
     tp = ftE(ci0, m=20)
     for i in range(nw):
@@ -284,8 +288,8 @@ def ft_ismpl_rdm12s(qud, hop, ci0, T, norb,\
             else:
                 continue
            
-    log.info("Acceptance ration for Warming-up is %6.6f"%(1.*Nar/(1.*nw)))
-    log.info("Sampling......")
+    if verbose > 2:
+        log.info("Acceptance ration for Warming-up is %6.6f"%(1.*Nar/(1.*nw)))
     # Sampling with block average
     Nar = 0
     tp_e = ftE(ci0)
@@ -333,7 +337,8 @@ def ft_ismpl_rdm12s(qud, hop, ci0, T, norb,\
     RDM2ba = RDM2ba/(1.*nsamp)
     RDM2bb = RDM2bb/(1.*nsamp)
 
-    log.section("The 1 particle RDM from importance sampling- v12 is:\n %s\n %s"\
+    if verbose > 0:
+        log.section("The 1 particle RDM from importance sampling- v12 is:\n %s\n %s"\
                 %(RDM1a, RDM1b))
 
     # save the rdm_profile
@@ -346,133 +351,10 @@ def ft_ismpl_rdm12s(qud, hop, ci0, T, norb,\
         np.save(prof_file, docc_arr)
     ar =  (1.* Nar)/(1.* nsamp)
 
-    log.debug("The acceptance ratio at T=%2.6f is %6.6f"%(T, ar))
+    if verbose > 0:
+        log.debug("The acceptance ratio at T=%2.6f is %6.6f"%(T, ar))
 
     return (RDM1a, RDM1b), (RDM2aa, RDM2ab, RDM2ba, RDM2bb)  
-
-#def ft_ismpl_rdm12s(qud, hop, ci0, T, norb, \
-#         genci=0, nrot=200, nw=25, nsamp=100, M=50, dr=0.5, \
-#         dtheta=20.0, gen_prof=False, prof_file=None, **kwargs):
-#
-#    '''
-#        qud       - function that returns <v|a_i^+ a_k^+ a_l a_j|u>
-#        gen_prof  - if True, the profile will be generated
-#        prof_file - string, the path to the file storing the profile
-#                    of double occupancy.
-#    '''
-#
-#    def ftE(v0, m=M):
-#        return _ftlan.ftlan_E1c(hop, v0, T, m=m)
-#
-#    def ftrdm12s(v0):
-#        (rdm1a, rdm1b), (rdm2aa, rdm2ab, rdm2ba, rdm2bb), Z = _ftlan.ftlan_rdm12s1c(qud, hop, v0, T, norb, m=M)
-#        return (rdm1a, rdm1b), (rdm2aa, rdm2ab, rdm2ba, rdm2bb), Z
-#
-#    def get_docc(_rdm2ab):
-#        res = 0.
-#        for i in range(norb):
-#            res += _rdm2ab[i,i,i,i]
-#        return res
-#
-#    beta = 1./T  # kB = 1.
-#    # generate the starting vector ----NOTE can also be several starting vectors
-#    ci0 = ci0.reshape(-1).copy()
-#    lc = len(ci0)
-#
-#    if genci == 0:
-#        move = "disp"
-#        log.info("Using displacement to move to the next wavefunction!")
-#    else:
-#        move = "rot"
-#        log.info("Using rotation to move to the next wavefunction!")
-#
-#
-#    # Warm-up
-#    log.info("Warming up ......")
-#    Nar = 0 # acceptance number
-#    tp = ftE(ci0, m=20)[1]
-#    for i in range(nw):
-#        ci = gen_nci(ci0, genci)
-#        tp_n = ftE(ci, m=20)[1]
-#        acc = tp_n/tp 
-#        if acc >= 1:
-#            ci0 = ci.copy()
-#            Nar += 1
-#        else:
-#            tmp = random.random()
-#            if tmp <= acc:
-#                ci0 = ci.copy()
-#                tp = tp_n
-#                Nar += 1
-#            else:
-#                continue
-#           
-#    log.info("Acceptance ration for Warming-up is %6.6f"%(1.*Nar/(1.*nw)))
-#    log.info("Sampling......")
-#    # Sampling with block average
-#
-#    Nar = 0
-#    e, tp_e = ftE(ci0)
-#    (rdm1a, rdm1b), (rdm2aa, rdm2ab, rdm2ba, rdm2bb), tp_rdm = ftrdm12s(ci0)
-#
-#    E = 0.
-#    RDM1a, RDM1b = np.zeros((norb, norb)), np.zeros((norb, norb))
-#    RDM2aa, RDM2ab, RDM2ba, RDM2bb = np.zeros((norb, norb, norb, norb)),\
-#                                     np.zeros((norb, norb, norb, norb)),\
-#                                     np.zeros((norb, norb, norb, norb)),\
-#                                     np.zeros((norb, norb, norb, norb))
-#
-#
-#    docc_arr = []
-#    for i in range(nsamp):
-#        E += e/tp_e
-#        RDM1a += rdm1a/tp_rdm
-#        RDM1b += rdm1b/tp_rdm
-#        RDM2aa += rdm2aa/tp_rdm
-#        RDM2ab += rdm2ab/tp_rdm
-#        RDM2ba += rdm2ba/tp_rdm
-#        RDM2bb += rdm2bb/tp_rdm
-#        if gen_prof:
-#            docc_arr.append(get_docc(rdm2ab/tp_rdm))
-#
-#        ci = gen_nci(ci0, genci)
-#        e_n, tp_e_n = ftE(ci)
-#        acc = tp_e_n/tp_e
-#        if acc >= 1:
-#            ci0 = ci.copy()
-#            e = e_n, 
-#            tp_e = tp_e_n
-#            (rdm1a, rdm1b), (rdm2aa, rdm2ab, rdm2ba, rdm2bb), tp_rdm = ftrdm12s(ci0)
-#            Nar += 1
-#        else:
-#            tmp = random.random()
-#            if tmp <= acc:
-#                ci0 = ci.copy()
-#                tp_e = tp_e_n
-#                e = e_n
-#                (rdm1a, rdm1b), (rdm2aa, rdm2ab, rdm2ba, rdm2bb), tp_rdm = ftrdm12s(ci0)
-#                Nar += 1
-#        
-#    E = E/(1.*nsamp)
-#    RDM1a = RDM1a/(1.*nsamp)
-#    RDM1b = RDM1b/(1.*nsamp)
-#    RDM2aa = RDM2aa/(1.*nsamp)
-#    RDM2ab = RDM2ab/(1.*nsamp)
-#    RDM2ba = RDM2ba/(1.*nsamp)
-#    RDM2bb = RDM2bb/(1.*nsamp)
-#
-#    ar =  (1.* Nar)/(1.* nsamp)
-#    log.debug("acceptance ratio at T = %2.6f is %6.6f"%(T, ar))
-#
-#    if gen_prof: 
-#        if prof_file is None:
-#            if not os.path.exists("./data"):
-#                os.makedirs("./data")
-#            prof_file = "./data/docc_prof_%s.npy"%move
-#        docc_arr=np.array(docc_arr)
-#        np.save(prof_file, docc_arr)
-#   
-#    return (RDM1a, RDM1b), (RDM2aa, RDM2ab, RDM2ba, RDM2bb)  
 
 def gen_nci(v0, cases, dr=0.5, dtheta=20.):
     # generate the new ci-vector
