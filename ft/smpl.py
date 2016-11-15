@@ -157,7 +157,7 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
     if prof_file is None:
         if not os.path.exists("./data"):
             os.makedirs("./data")
-        prof_file = "./data/RDM1_prof_%s.npy"%move
+        prof_file = "./data/RDM1prof_%sT%2.2f.npy"%(move, T)
     # Warm-up
 
     Nar = 0 # acceptance number
