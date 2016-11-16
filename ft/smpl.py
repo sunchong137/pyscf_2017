@@ -338,7 +338,7 @@ def ft_ismpl_rdm12s(qud, hop, ci0, T, norb,\
     RDM2ba = RDM2ba/(1.*nsamp)
     RDM2bb = RDM2bb/(1.*nsamp)
 
-    if verbose > 0:
+    if verbose > 1:
         log.section("The 1 particle RDM from importance sampling- v12 is:\n %s\n %s"\
                 %(RDM1a, RDM1b))
 

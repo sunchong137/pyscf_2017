@@ -45,8 +45,8 @@ def kernel_ft(h1e, g2e, norb, nelec, T, uhf=False, m=50, nsamp=1000, Tmin=1e-3):
     E = flan.ftlan_E(hop, vecgen, T, m, nsamp)
     return E
 
-def kernel_ft_smpl(h1e, g2e, norb, nelec, T, uhf=False, vecgen=0, m=50, nsmpl=2000,\
-                 Tmin=1e-3, nrotation=200, eprofile=None, **kwargs):
+def kernel_ft_smpl(h1e, g2e, norb, nelec, T, uhf=False, vecgen=0, m=50,\
+ nsmpl=2000, Tmin=1e-3, nrotation=200, eprofile=None, verbose=0, **kwargs):
     '''
         E at temperature T.
         using importance sampling.
@@ -88,7 +88,7 @@ def kernel_ft_smpl(h1e, g2e, norb, nelec, T, uhf=False, vecgen=0, m=50, nsmpl=20
         return hc.reshape(-1)
     E = ftsmpl.ft_ismpl_E(hop, ci0, T,\
             nsamp=nsmpl, dr=disp, genci=vecgen, nrot=nrotation,\
-            feprof=eprofile, Hdiag=hdiag)
+            feprof=eprofile, Hdiag=hdiag, verbose=verbose)
     # ar is the acceptance ratio
     return E
 
@@ -129,8 +129,8 @@ def ft_rdm1(h1e, g2e, norb, nelec, T, m=50, nsamp=40):
     rdma, rdmb = ft_rdm1s(h1e, g2e, norb, nelec, T, m, nsamp)
     return rdma+rdmb
  
-def rdm1s_ft_smpl(h1e, g2e, norb, nelec, T, uhf=False, vecgen=0, m=50, nsmpl=2000, \
-                 Tmin=1e-3, nrotation=200):
+def rdm1s_ft_smpl(h1e, g2e, norb, nelec, T, uhf=False, vecgen=0,\
+ m=50, nsmpl=2000, Tmin=1e-3, nrotation=200, verbose=0, **kwargs):
     '''
         RDM1a, RDM1b at temperature T.
         using importance sampling.
@@ -178,7 +178,7 @@ def rdm1s_ft_smpl(h1e, g2e, norb, nelec, T, uhf=False, vecgen=0, m=50, nsmpl=200
 
     rdm1a, rdm1b = ftsmpl.ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
         genci=vecgen, nrot=nrotation, nsamp=nsmpl, M=m, \
-        dr=disp, Hdiag=hdiag)
+        dr=disp, Hdiag=hdiag, verbose=verbose)
     return rdm1a, rdm1b
 
 def rdm1_ft_smpl(h1e, g2e, norb, nelec, T, vecgen=0, m=50, nsmpl=2000, \
@@ -245,7 +245,8 @@ def ft_rdm12(h1e, g2e, norb, nelec, T, m=50, nsamp=40, Tmin=1e-3):
     dm1, dm2 = flan.ftlan_rdm12(qud, hop, vecgen, T, norb, m, nsamp)
     return dm1, dm2
 
-def rdm12s_ft_smpl(h1e, g2e, norb, nelec, T, uhf=False, vecgen=0, m=50, nsamp=200, Tmin=1e-3, nrotation=200):
+def rdm12s_ft_smpl(h1e, g2e, norb, nelec, T, uhf=False, vecgen=0, \
+        m=50, nsamp=200, Tmin=1e-3, nrotation=200, verbose=0, **kwargs):
     '''rdm of spin a and b at temperature T
     '''
     if T < Tmin:
@@ -290,8 +291,9 @@ def rdm12s_ft_smpl(h1e, g2e, norb, nelec, T, uhf=False, vecgen=0, m=50, nsamp=20
         return (dm1a, dm1b), (dm2aa, dm2ab, dm2ba, dm2bb)
 
 #    rdma, rdmb = flan.ht_rdm1s(qud, hop, vecgen, T, norb, m, nsamp)
-    (dm1a, dm1b), (dm2aa, dm2ab, dm2ba, dm2bb) = ftsmpl.ft_ismpl_rdm12s(qud, hop, ci0, T, norb, genci=vecgen,\
-         nrot=nrotation, nsamp=nsamp, M=m, dr=disp, Hdiag=hdiag)
+    (dm1a, dm1b), (dm2aa, dm2ab, dm2ba, dm2bb) = ftsmpl.ft_ismpl_rdm12s(qud,\
+     hop, ci0, T, norb, genci=vecgen, nrot=nrotation, \
+    nsamp=nsamp, M=m, dr=disp, Hdiag=hdiag, verbose=verbose)
 
     return (dm1a, dm1b), (dm2aa, dm2ab, dm2ba, dm2bb)
 
