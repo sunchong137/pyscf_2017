@@ -29,7 +29,7 @@ def ft_ismpl_E(hop, ci0, T, genci=0, nrot=200,\
        Hdiag  ---- 1d array, the diagonal terms of H
     '''
     def ftE(v0, m=M):
-        if Hdiag==None:
+        if Hdiag is None:
             return _ftlan.ftlan_E1c(hop, v0, T, m=m)
         else:
             _E = np.sum(v0**2*Hdiag)
@@ -127,7 +127,7 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
     '''
     def ftE(v0, m=M):
         v=v0.copy()
-        if Hdiag==None:
+        if Hdiag is None:
             return _ftlan.ftlan_E1c(hop, v, T, m=m)
         else:
             _E = np.sum((v**2)*Hdiag)
@@ -188,7 +188,8 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
     for i in range(nsamp):
         RDM1a += rdm1a/tp_rdm
         RDM1b += rdm1b/tp_rdm
-        rdm_arr.append([i, np.linalg.norm((rdm1a+rdm1b)/tp_rdm)/(norb**2.)])
+#        rdm_arr.append(np.linalg.norm((rdm1a+rdm1b)/tp_rdm)/(norb**2.))
+        rdm_arr.append(np.linalg.norm((rdm1a+rdm1b)/tp_rdm))
 #        print "E", e/tp
         ci = gen_nci(ci0, genci)
         tp_e_n = ftE(ci)
@@ -222,7 +223,7 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
 
 def ft_ismpl_rdm12s(qud, hop, ci0, T, norb,\
          genci=0, nrot=200, nw=25, nsamp=100, M=50, dr=0.5, \
-         dtheta=20.0, gen_prof=False, prof_file=None,\
+         dtheta=20.0, gen_prof=True, prof_file=None,\
          Hdiag=None, verbose=0, **kwargs):
 
     if verbose > 2:
@@ -237,7 +238,7 @@ def ft_ismpl_rdm12s(qud, hop, ci0, T, norb,\
     '''
 
     def ftE(v0, m=M):
-        if Hdiag==None:
+        if Hdiag is None:
             return _ftlan.ftlan_E1c(hop, v0, T, m=m)
         else:
             _E=np.sum((v0**2)*Hdiag)
@@ -346,7 +347,7 @@ def ft_ismpl_rdm12s(qud, hop, ci0, T, norb,\
         if prof_file is None:
             if not os.path.exists("./data"):
                 os.makedirs("./data")
-            prof_file = "./data/docc_prof_%s.npy"%move
+            prof_file = "./data/doccprof_%s_T%2.2f.npy"%(move,T)
         docc_arr=np.array(docc_arr)
         np.save(prof_file, docc_arr)
     ar =  (1.* Nar)/(1.* nsamp)
@@ -362,7 +363,7 @@ def gen_nci(v0, cases, dr=0.5, dtheta=20.):
         disp = np.random.randn(len(v0)) * dr
         v1 = v0 + disp
         return v1/nl.norm(v1)
-    if cases == 1: # generate new vector by rotational FIXME gives very bad result!!!!! -_-!!!
+    if cases == 1: # generate new vector by rotational
 #        print "generating new vectors by rotation"
         v1 = v0.copy()
         for i in range(nrot):
