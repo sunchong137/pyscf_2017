@@ -116,9 +116,9 @@ def ftlan_rdm1s1c(qud, hop, v0, T, norb, m=60, Min_b=1e-9, Min_m=5, kB=1, norm=n
         RDMs of spin a and b
     '''
 #    rdma, rdmb = qud(v0, v0)*0. #so we don't need norb
-    log.info("RDM1s -- 1 cycle\n")
+#    log.info("RDM1s -- 1 cycle\n")
     beta = 1./(kB*T)
-    log.info("beta = %6.6f (T = %6.6f)"%(beta, T))
+#    log.info("beta = %6.6f (T = %6.6f)"%(beta, T))
     rdma, rdmb = np.zeros((norb, norb)), np.zeros((norb, norb)) 
     Z = 0.
     a, b = [], []
@@ -215,9 +215,9 @@ def ftlan_rdm12s1c(qud, hop, v0, T, norb, m=60, Min_b=1e-9, Min_m=5, kB=1, norm=
     return:
         1- and 2-RDMs of spin a and b
     '''
-    log.info("RDM12s -- 1 cycle...\n")
+#    log.info("RDM12s -- 1 cycle...\n")
     beta = 1./(kB*T)
-    log.info("beta = %6.6f (T = %6.6f)\n"%(beta, T))
+#    log.info("beta = %6.6f (T = %6.6f)\n"%(beta, T))
     rdm1a, rdm1b = np.zeros((norb, norb)), np.zeros((norb, norb))
     rdm2aa, rdm2ab, rdm2ba, rdm2bb = np.zeros((norb, norb, norb, norb)), \
         np.zeros((norb, norb, norb, norb)),  np.zeros((norb, norb, norb, norb)),\
@@ -264,7 +264,7 @@ def ftlan_rdm12s1c(qud, hop, v0, T, norb, m=60, Min_b=1e-9, Min_m=5, kB=1, norm=
     Z = np.sum(eps*phi[0, :]**2.)
 
     psi = estate.dot(coef.T)
-    log.section("partition function: %10.10f"%Z)
+#    log.section("partition function: %10.10f"%Z)
     (rdm1a, rdm1b), (rdm2aa, rdm2ab, rdm2ba, rdm2bb) = qud(psi, psi)
 
     return (rdm1a, rdm1b), (rdm2aa, rdm2ab, rdm2ba, rdm2bb), Z

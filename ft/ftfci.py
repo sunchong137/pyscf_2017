@@ -136,9 +136,10 @@ def rdm1s_ft_smpl(h1e, g2e, norb, nelec, T, uhf=False, vecgen=0,\
         using importance sampling.
     '''
     if T < Tmin:
-       e, c = kernel(h1e, g2e, norb, nelec)
-       rdm1a, rdm1b = direct_spin1.make_rdm1s(c, norb, nelec)
-       return rdm1a, rdm1b
+        log.info("\nGROUND STATE solver is used~\n")
+        e, c = kernel(h1e, g2e, norb, nelec)
+        rdm1a, rdm1b = direct_spin1.make_rdm1s(c, norb, nelec)
+        return rdm1a, rdm1b
 
 #    h2e = direct_spin1.absorb_h1e(h1e, g2e, norb, nelec, .5)
     if uhf:

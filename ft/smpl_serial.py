@@ -2,18 +2,13 @@
 '''importance sampling of the Hilbert space
    Chong Sun 2016 Jun. 10
 '''
+
 import numpy as np
 import numpy.linalg as nl
 from pyscf.ft import ftlanczos as _ftlan
 import logger as log# this is my logger
 import os
 import random
-from mpi4py import MPI
-
-comm=MPI.COMM_WORLD
-MPI_rank=comm.Get_rank()
-MPI_size=comm.Get_size()
-
 
 def ft_ismpl_E(hop, ci0, T, genci=0, nrot=200,\
          nw=25, nsamp=2000, M=50, dr=0.5, dtheta=20.0, \
@@ -33,11 +28,9 @@ def ft_ismpl_E(hop, ci0, T, genci=0, nrot=200,\
        feprof ---- the file to store the energy profile
        Hdiag  ---- 1d array, the diagonal terms of H
     '''
-    N_per_proc = nsamp//MPI_size
-
     def ftE(v0, m=M):
         if Hdiag is None:
-            return _ftlan.ftlan_E1c(hop, v0, T, m=m)[1]
+            return _ftlan.ftlan_E1c(hop, v0, T, m=m)
         else:
             _E = np.sum(v0**2*Hdiag)
             return _E, np.exp(-beta*_E)
@@ -89,9 +82,8 @@ def ft_ismpl_E(hop, ci0, T, genci=0, nrot=200,\
             log.info("Using rotation to move to the next wavefunction!")
     if feprof==None:
         feprof = "Eprof_%s.npy"%(move)
-
     e, tp = ftlan(hop, ci0, T)
-    for i in range(N_per_proc):
+    for i in range(nsamp):
         E = e/tp
         Eprofile.append(E)
         #print "E", e/tp
@@ -114,24 +106,14 @@ def ft_ismpl_E(hop, ci0, T, genci=0, nrot=200,\
     Eprofile = np.asarray(Eprofile)
     np.save(feprof, Eprofile)
     E = np.mean(Eprofile)
-    ar =  (1.* Nar)/(1.* N_per_proc)
-
-    comm.Barrier()
-    E = comm.gather(E, root=0)
-    if MPI_rank==0:
-        E = np.asarray(E)
-        E = np.mean(E)
-    else:
-        E=None
-    E = comm.bcast(E, root=0)
+    ar =  (1.* Nar)/(1.* nsamp)
     if verbose > 0:
         log.debug("The acceptance ratio at T=%2.6f is %6.6f"%(T, ar))
     return E  
 
 def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
          genci=0, nrot=200, nw=25, nsamp=100, M=50, dr=0.5, \
-         dtheta=20.0, save_prof=False, prof_file=None, \
-         Hdiag=None, verbose=0,**kwargs):
+         dtheta=20.0, prof_file=None, Hdiag=None, verbose=0,**kwargs):
 
     if verbose > 2:
         log.info("calculating 1 particle RDMs with importance sampling!")
@@ -143,12 +125,10 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
                       |rdm|
         Hdiag  ---- 1d array, the diagonal terms of H
     '''
-    N_per_proc=nsamp//MPI_size
-
     def ftE(v0, m=M):
         v=v0.copy()
         if Hdiag is None:
-            return _ftlan.ftlan_E1c(hop, v, T, m=m)[1]
+            return _ftlan.ftlan_E1c(hop, v, T, m=m)
         else:
             _E = np.sum((v**2)*Hdiag)
             return np.exp(-beta*_E)
@@ -174,11 +154,10 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
         if verbose > 2:
             log.info("Using rotation to move to the next wavefunction!")
 
-    if save_prof:
-        if prof_file is None:
-            if not os.path.exists("./data"):
-                os.makedirs("./data")
-            prof_file = "./data/RDM1prof_%sT%2.2f.npy"%(move, T)
+    if prof_file is None:
+        if not os.path.exists("./data"):
+            os.makedirs("./data")
+        prof_file = "./data/RDM1prof_%sT%2.2f.npy"%(move, T)
     # Warm-up
 
     Nar = 0 # acceptance number
@@ -206,7 +185,7 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
 
     RDM1a = np.zeros((norb, norb))
     RDM1b = np.zeros((norb, norb))
-    for i in range(N_per_proc):
+    for i in range(nsamp):
         RDM1a += rdm1a/tp_rdm
         RDM1b += rdm1b/tp_rdm
 #        rdm_arr.append(np.linalg.norm((rdm1a+rdm1b)/tp_rdm)/(norb**2.))
@@ -229,24 +208,14 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
                 Nar += 1
         
 #    E = E/(1.*nsamp)
-    RDM1a = RDM1a/(1.*N_per_proc)
-    RDM1b = RDM1b/(1.*N_per_proc)
+    RDM1a = RDM1a/(1.*nsamp)
+    RDM1b = RDM1b/(1.*nsamp)
     if verbose > 1:
         log.section("The 1 particle RDM from importance sampling is:\n %s\n %s"%(RDM1a, RDM1b))
 
-    comm.Barrier()
-    RDM1a=comm.gather(RDM1a, root=0)
-    RDM1b=comm.gather(RDM1b, root=0)
-    if MPI_rank==0:
-        RDM1a=np.sum(np.asarray(RDM1a), axis=0).copy()
-        RDM1b=np.sum(np.asarray(RDM1b), axis=0).copy()
-    
-    RDM1a=comm.bcast(RDM1a, root=0)
-    RDM1b=comm.bcast(RDM1b, root=0)
     # save the rdm_profile
-    if save_prof:
-        rdm_arr = np.asarray(rdm_arr)
-        np.save(prof_file, rdm_arr)
+    rdm_arr = np.asarray(rdm_arr)
+    np.save(prof_file, rdm_arr)
     ar =  (1.* Nar)/(1.* nsamp)
     if verbose > 1:
         log.debug("The acceptance ratio at T=%2.6f is %6.6f"%(T, ar))
@@ -254,7 +223,7 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
 
 def ft_ismpl_rdm12s(qud, hop, ci0, T, norb,\
          genci=0, nrot=200, nw=25, nsamp=100, M=50, dr=0.5, \
-         dtheta=20.0, gen_prof=False, prof_file=None,\
+         dtheta=20.0, gen_prof=True, prof_file=None,\
          Hdiag=None, verbose=0, **kwargs):
 
     if verbose > 2:
@@ -268,11 +237,9 @@ def ft_ismpl_rdm12s(qud, hop, ci0, T, norb,\
         Hdiag     - 1d array, the diagonal terms of H
     '''
 
-    N_per_proc=nsamp//MPI_size
-
     def ftE(v0, m=M):
         if Hdiag is None:
-            return _ftlan.ftlan_E1c(hop, v0, T, m=m)[1]
+            return _ftlan.ftlan_E1c(hop, v0, T, m=m)
         else:
             _E=np.sum((v0**2)*Hdiag)
             return np.exp(-beta*_E)
@@ -337,7 +304,7 @@ def ft_ismpl_rdm12s(qud, hop, ci0, T, norb,\
                                      np.zeros((norb, norb, norb, norb))
 
     docc_arr=[]
-    for i in range(N_per_proc):
+    for i in range(nsamp):
         RDM1a += rdm1a/tp_rdm
         RDM1b += rdm1b/tp_rdm
         RDM2aa += rdm2aa/tp_rdm
@@ -364,16 +331,16 @@ def ft_ismpl_rdm12s(qud, hop, ci0, T, norb,\
                 Nar += 1
         
 #    E = E/(1.*nsamp)
-    RDM1a = RDM1a/(1.*N_per_proc)
-    RDM1b = RDM1b/(1.*N_per_proc)
-    RDM2aa = RDM2aa/(1.*N_per_proc)
-    RDM2ab = RDM2ab/(1.*N_per_proc)
-    RDM2ba = RDM2ba/(1.*N_per_proc)
-    RDM2bb = RDM2bb/(1.*N_per_proc)
+    RDM1a = RDM1a/(1.*nsamp)
+    RDM1b = RDM1b/(1.*nsamp)
+    RDM2aa = RDM2aa/(1.*nsamp)
+    RDM2ab = RDM2ab/(1.*nsamp)
+    RDM2ba = RDM2ba/(1.*nsamp)
+    RDM2bb = RDM2bb/(1.*nsamp)
 
     if verbose > 1:
-        log.section("The 1 particle RDM from importance \
-                    sampling- v12 is:\n %s\n %s"%(RDM1a, RDM1b))
+        log.section("The 1 particle RDM from importance sampling- v12 is:\n %s\n %s"\
+                %(RDM1a, RDM1b))
 
     # save the rdm_profile
     if gen_prof: 
@@ -384,29 +351,6 @@ def ft_ismpl_rdm12s(qud, hop, ci0, T, norb,\
         docc_arr=np.array(docc_arr)
         np.save(prof_file, docc_arr)
     ar =  (1.* Nar)/(1.* nsamp)
-
-    comm.Barrier()
-    RDM1a=comm.gather(RDM1a, root=0)
-    RDM1b=comm.gather(RDM1b, root=0)
-    RDM2aa = comm.gather(RDM2aa, root=0)
-    RDM2ab = comm.gather(RDM2ab, root=0)
-    RDM2ba = comm.gather(RDM2ba, root=0)
-    RDM2bb = comm.gather(RDM2bb, root=0)
-   
-    if MPI_rank==0:
-        RDM1a=np.sum(np.asarray(RDM1a), axis=0).copy()
-        RDM1b=np.sum(np.asarray(RDM1b), axis=0).copy()
-        RDM2aa=np.sum(np.asarray(RDM2aa), axis=0).copy()
-        RDM2ab=np.sum(np.asarray(RDM2ab), axis=0).copy()
-        RDM2ba=np.sum(np.asarray(RDM2ba), axis=0).copy()
-        RDM2bb=np.sum(np.asarray(RDM2bb), axis=0).copy()
-
-    RDM1a=comm.bcast(RDM1a, root=0)
-    RDM1b=comm.bcast(RDM1b, root=0)
-    RDM2aa=comm.bcast(RDM2aa, root=0)
-    RDM2ab=comm.bcast(RDM2ab, root=0)
-    RDM2ba=comm.bcast(RDM2ba, root=0)
-    RDM2bb=comm.bcast(RDM2bb, root=0)
 
     if verbose > 0:
         log.debug("The acceptance ratio at T=%2.6f is %6.6f"%(T, ar))
@@ -483,13 +427,9 @@ if __name__ == "__main__":
     def qud2(v1, v2):
         (dm1a, dm1b), (dm2aa, dm2ab, dm2ba, dm2bb) = direct_spin1.trans_rdm12s(v1, v2, norb, nelec)
         return (dm1a, dm1b), (dm2aa, dm2ab, dm2ba, dm2bb)
-    e=ft_ismpl_E(hop, ci0, T, nsamp=2000)
-    log.result("E = %10.10f\n"%e)
 
-    dma, dmb = ft_ismpl_rdm1s(qud1, hop, ci0, T, norb, nsamp=100, M=40)
+    dma, dmb = ft_ismpl_rdm1s(qud1, hop, ci0, T, norb, nsamp=1, M=40)
 
-    log.result("rdm1s:\n%s\n%s"%(dma, dmb))
-    (rdm1a, rdm1b), (rdm2aa, rdm2ab, rdm2ba, rdm2bb) = ft_ismpl_rdm12s(qud2, hop, ci0, T, norb, nsamp=100, M=40)
-    log.result("rdm2aa:\n%s"%rdm2aa)
-#    print "diff dm1a:", np.linalg.norm(dma-rdm1a)
-#   print "diff dm1b:", np.linalg.norm(dmb-rdm1b)
+    (rdm1a, rdm1b), (rdm2aa, rdm2ab, rdm2ba, rdm2bb) = ft_ismpl_rdm12s(qud2, hop, ci0, T, norb, nsamp=1, M=40, gen_prof=True)
+    print "diff dm1a:", np.linalg.norm(dma-rdm1a)
+    print "diff dm1b:", np.linalg.norm(dmb-rdm1b)
