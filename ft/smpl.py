@@ -9,6 +9,7 @@ import logger as log# this is my logger
 import os
 import random
 from mpi4py import MPI
+from pyscf.ft import smpl_serial as smpl_s
 
 comm=MPI.COMM_WORLD
 MPI_rank=comm.Get_rank()
@@ -238,8 +239,8 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
     RDM1a=comm.gather(RDM1a, root=0)
     RDM1b=comm.gather(RDM1b, root=0)
     if MPI_rank==0:
-        RDM1a=np.sum(np.asarray(RDM1a), axis=0).copy()
-        RDM1b=np.sum(np.asarray(RDM1b), axis=0).copy()
+        RDM1a=np.sum(np.asarray(RDM1a), axis=0).copy()/MPI_size
+        RDM1b=np.sum(np.asarray(RDM1b), axis=0).copy()/MPI_size
     
     RDM1a=comm.bcast(RDM1a, root=0)
     RDM1b=comm.bcast(RDM1b, root=0)
@@ -394,12 +395,12 @@ def ft_ismpl_rdm12s(qud, hop, ci0, T, norb,\
     RDM2bb = comm.gather(RDM2bb, root=0)
    
     if MPI_rank==0:
-        RDM1a=np.sum(np.asarray(RDM1a), axis=0).copy()
-        RDM1b=np.sum(np.asarray(RDM1b), axis=0).copy()
-        RDM2aa=np.sum(np.asarray(RDM2aa), axis=0).copy()
-        RDM2ab=np.sum(np.asarray(RDM2ab), axis=0).copy()
-        RDM2ba=np.sum(np.asarray(RDM2ba), axis=0).copy()
-        RDM2bb=np.sum(np.asarray(RDM2bb), axis=0).copy()
+        RDM1a=np.sum(np.asarray(RDM1a), axis=0).copy()/MPI_size
+        RDM1b=np.sum(np.asarray(RDM1b), axis=0).copy()/MPI_size
+        RDM2aa=np.sum(np.asarray(RDM2aa), axis=0).copy()/MPI_size
+        RDM2ab=np.sum(np.asarray(RDM2ab), axis=0).copy()/MPI_size
+        RDM2ba=np.sum(np.asarray(RDM2ba), axis=0).copy()/MPI_size
+        RDM2bb=np.sum(np.asarray(RDM2bb), axis=0).copy()/MPI_size
 
     RDM1a=comm.bcast(RDM1a, root=0)
     RDM1b=comm.bcast(RDM1b, root=0)
@@ -484,12 +485,14 @@ if __name__ == "__main__":
         (dm1a, dm1b), (dm2aa, dm2ab, dm2ba, dm2bb) = direct_spin1.trans_rdm12s(v1, v2, norb, nelec)
         return (dm1a, dm1b), (dm2aa, dm2ab, dm2ba, dm2bb)
     e=ft_ismpl_E(hop, ci0, T, nsamp=2000)
-    log.result("E = %10.10f\n"%e)
+    e2=smpl_s.ft_ismpl_E(hop, ci0, T, nsamp=2000)
+    log.result("E = %10.10f\n"%(e-e2))
 
-    dma, dmb = ft_ismpl_rdm1s(qud1, hop, ci0, T, norb, nsamp=100, M=40)
+    dma, dmb = ft_ismpl_rdm1s(qud1, hop, ci0, T, norb, nsamp=2000, M=40)
+    rdma, rdmb = smpl_s.ft_ismpl_rdm1s(qud1, hop, ci0, T, norb, nsamp=2000, M=40)
 
-    log.result("rdm1s:\n%s\n%s"%(dma, dmb))
-    (rdm1a, rdm1b), (rdm2aa, rdm2ab, rdm2ba, rdm2bb) = ft_ismpl_rdm12s(qud2, hop, ci0, T, norb, nsamp=100, M=40)
-    log.result("rdm2aa:\n%s"%rdm2aa)
+    log.result("rdm1s diff: %10.10f"%nl.norm(dma-rdma))
+#    (rdm1a, rdm1b), (rdm2aa, rdm2ab, rdm2ba, rdm2bb) = ft_ismpl_rdm12s(qud2, hop, ci0, T, norb, nsamp=100, M=40)
+#    log.result("rdm2aa:\n%s"%rdm2aa)
 #    print "diff dm1a:", np.linalg.norm(dma-rdm1a)
 #   print "diff dm1b:", np.linalg.norm(dmb-rdm1b)

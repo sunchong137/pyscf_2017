@@ -30,7 +30,7 @@ def ft_ismpl_E(hop, ci0, T, genci=0, nrot=200,\
     '''
     def ftE(v0, m=M):
         if Hdiag is None:
-            return _ftlan.ftlan_E1c(hop, v0, T, m=m)
+            return _ftlan.ftlan_E1c(hop, v0, T, m=m)[1]
         else:
             _E = np.sum(v0**2*Hdiag)
             return _E, np.exp(-beta*_E)
@@ -128,7 +128,7 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
     def ftE(v0, m=M):
         v=v0.copy()
         if Hdiag is None:
-            return _ftlan.ftlan_E1c(hop, v, T, m=m)
+            return _ftlan.ftlan_E1c(hop, v, T, m=m)[1]
         else:
             _E = np.sum((v**2)*Hdiag)
             return np.exp(-beta*_E)
@@ -239,7 +239,7 @@ def ft_ismpl_rdm12s(qud, hop, ci0, T, norb,\
 
     def ftE(v0, m=M):
         if Hdiag is None:
-            return _ftlan.ftlan_E1c(hop, v0, T, m=m)
+            return _ftlan.ftlan_E1c(hop, v0, T, m=m)[1]
         else:
             _E=np.sum((v0**2)*Hdiag)
             return np.exp(-beta*_E)
