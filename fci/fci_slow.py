@@ -131,6 +131,7 @@ def make_hdiag(h1e, g2e, norb, nelec, opt=None):
     else:
         neleca, nelecb = nelec
     link_indexa = cistring.gen_linkstr_index_o0(range(norb), neleca)
+    print "link_index shape: ", link_indexa.shape
     link_indexb = cistring.gen_linkstr_index_o0(range(norb), nelecb)
     occslista = [tab[:neleca,0] for tab in link_indexa]
     occslistb = [tab[:nelecb,0] for tab in link_indexb]
@@ -163,6 +164,40 @@ def kernel(h1e, g2e, norb, nelec):
     e, c = pyscf.lib.davidson(hop, ci0.reshape(-1), precond)
     return e
 
+
+def kernel_hubbard(t, u, norb, nelec):
+    '''
+        chong sun
+        u is a tuple, and u = (u_aa, u_ab, u_bb)
+        usually u_aa and u_bb are zero
+    '''
+    h1e = numpy.zeros((norb, norb))
+    for i in range(norb):
+        h1e[i, (i+1)%norb] = -t
+        h1e[i, (i-1)%norb] = -t
+    h1e[0, norb-1] = t
+    h1e[norb-1, 0] = t
+
+    g2e = numpy.zeros((norb, norb, norb, norb))
+    for i in range(norb):
+        g2e[i,i,i,i] = u[1]
+    h2e = absorb_h1e(h1e, g2e, norb, nelec, .5)
+#    print h2e
+
+#    g2e = u
+    na = cistring.num_strings(norb, nelec//2)
+    ci0 = numpy.ones((na,na))
+    ci0 = ci0/numpy.linalg.norm(ci0)
+
+    def hop(c):
+        hc = contract_2e(h2e, c, norb, nelec)
+ #       hc = contract_1e(h1e, c, norb, nelec).reshape(-1)
+ #       hc += contract_2e_hubbard(u, c, norb, nelec).reshape(-1)
+        return hc.reshape(-1)
+    hdiag = make_hdiag(h1e, g2e, norb, nelec)
+    precond = lambda x, e, *args: x/(hdiag-e+1e-4)
+    e, c=pyscf.lib.davidson(hop, ci0.reshape(-1), precond)
+    return e
 
 # dm_pq = <|p^+ q|>
 def make_rdm1(fcivec, norb, nelec, opt=None):
@@ -224,27 +259,42 @@ if __name__ == '__main__':
     from pyscf import scf
     from pyscf import ao2mo
 
-    mol = gto.Mole()
-    mol.verbose = 0
-    mol.output = None
-    mol.atom = [
-        ['H', ( 1.,-1.    , 0.   )],
-        ['H', ( 0.,-1.    ,-1.   )],
-        ['H', ( 1.,-0.5   ,-1.   )],
-        ['H', ( 0.,-0.    ,-1.   )],
-        ['H', ( 1.,-0.5   , 0.   )],
-        ['H', ( 0., 1.    , 1.   )],
-    ]
-    mol.basis = 'sto-3g'
-    mol.build()
+#   mol = gto.Mole()
+#   mol.verbose = 0
+#   mol.output = None
+#   mol.atom = [
+#       ['H', ( 1.,-1.    , 0.   )],
+#       ['H', ( 0.,-1.    ,-1.   )],
+#       ['H', ( 1.,-0.5   ,-1.   )],
+#       ['H', ( 0.,-0.    ,-1.   )],
+#       ['H', ( 1.,-0.5   , 0.   )],
+#       ['H', ( 0., 1.    , 1.   )],
+#   ]
+#   mol.basis = 'sto-3g'
+#   mol.build()
 
-    m = scf.RHF(mol)
-    m.kernel()
-    norb = m.mo_coeff.shape[1]
-    nelec = mol.nelectron - 2
-    h1e = reduce(numpy.dot, (m.mo_coeff.T, m.get_hcore(), m.mo_coeff))
-    eri = ao2mo.kernel(m._eri, m.mo_coeff, compact=False)
-    eri = eri.reshape(norb,norb,norb,norb)
+#   m = scf.RHF(mol)
+#   m.kernel()
+#   norb = m.mo_coeff.shape[1]
+#   nelec = mol.nelectron - 2
+#   h1e = reduce(numpy.dot, (m.mo_coeff.T, m.get_hcore(), m.mo_coeff))
+#   eri = ao2mo.kernel(m._eri, m.mo_coeff, compact=False)
+#   eri = eri.reshape(norb,norb,norb,norb)
 
-    e1 = kernel(h1e, eri, norb, nelec)
-    print(e1, e1 - -7.9766331504361414)
+#   e1 = kernel(h1e, eri, norb, nelec)
+#    print(e1, e1 - -7.9766331504361414)
+    
+    norb = 6
+    nelec = 6
+    h1e = numpy.zeros((norb, norb))
+    for i in range(norb):
+        h1e[i, (i+1)%norb] = -1.
+        h1e[i, (i-1)%norb] = -1.
+    h1e[0, norb-1] = 1.
+    h1e[norb-1, 0] = 1.
+    u = (0., 4., 0.)
+    e = kernel_hubbard(h1e, u, norb, nelec)
+    print e/norb
+
+
+    

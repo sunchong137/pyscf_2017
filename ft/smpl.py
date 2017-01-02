@@ -18,7 +18,7 @@ MPI_size=comm.Get_size()
 
 def ft_ismpl_E(hop, ci0, T, genci=0, nrot=200,\
          nw=25, nsamp=2000, M=50, dr=0.5, dtheta=20.0, \
-         feprof=None, Hdiag=None, verbose=0, **kwargs):
+         save_prof=False, feprof=None, Hdiag=None, verbose=0, **kwargs):
     '''
        with 1 initial vector
        note that the probability and the energy is given by the same function (ftlan)
@@ -88,8 +88,6 @@ def ft_ismpl_E(hop, ci0, T, genci=0, nrot=200,\
         move = "rot"
         if verbose > 2:
             log.info("Using rotation to move to the next wavefunction!")
-    if feprof==None:
-        feprof = "Eprof_%s.npy"%(move)
 
     e, tp = ftlan(hop, ci0, T)
     for i in range(N_per_proc):
@@ -113,7 +111,11 @@ def ft_ismpl_E(hop, ci0, T, genci=0, nrot=200,\
                 Nar += 1
 
     Eprofile = np.asarray(Eprofile)
-    np.save(feprof, Eprofile)
+
+    if save_prof:
+        if feprof==None:
+            feprof = "Eprof_%s.npy"%(move)
+        np.save(feprof, Eprofile)
     E = np.mean(Eprofile)
     ar =  (1.* Nar)/(1.* N_per_proc)
 
