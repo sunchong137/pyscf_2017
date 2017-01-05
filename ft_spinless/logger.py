@@ -2,31 +2,45 @@ import sys
 from datetime import datetime
 
 stdout = sys.stdout
+try:
+    from mpi4py import MPI
+    comm=MPI.COMM_WORLD
+    rank=comm.Get_rank()
+except:
+    rank=0
 
 def time():
     stdout.write(datetime.now().strftime("%y %b %d %H:%M:%S") + "  ")
     stdout.flush()
 
 def result(msg, *args):
-    time()
-    stdout.write("********" + "  " + msg + "\n")
-    stdout.flush()
+    if rank==0:
+        time()
+        stdout.write("********" + "  " + msg + "\n")
+        stdout.flush()
 
 def section(msg, *args):
-    time()
-    stdout.write("########" + "  " + msg + "\n")
-    stdout.flush()
+    if rank==0:
+        time()
+        stdout.write("########" + "  " + msg + "\n")
+        stdout.flush()
 
 def debug(msg, *args):
-    time()
-    stdout.write("  DEBUG " + "  " + msg + "\n" )
+    if rank==0:
+        time()
+        stdout.write("  DEBUG " + "  " + msg + "\n" )
+        stdout.flush()
 
 def info(msg, *args):
-    time()
-    stdout.write("  INFO  " + "  " + msg + "\n")
+    if rank==0:
+        time()
+        stdout.write("  INFO  " + "  " + msg + "\n")
+        stdout.flush()
 
 if __name__ == "__main__":
     msg = "This is a test"
     result(msg)
     section(msg)
+    debug(msg)
+    info(msg)
            
