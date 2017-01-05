@@ -304,38 +304,65 @@ if __name__ == '__main__':
     from pyscf import scf
     from pyscf import ao2mo
 
-    mol = gto.Mole()
-    mol.verbose = 0
-    mol.output = None
-    mol.atom = [
-        ['H', ( 1.,-1.    , 0.   )],
-        ['H', ( 0.,-1.    ,-1.   )],
-        ['H', ( 1.,-0.5   ,-1.   )],
-        ['H', ( 0.,-0.    ,-1.   )],
-        ['H', ( 1.,-0.5   , 0.   )],
-        ['H', ( 0., 1.    , 1.   )],
-    ]
-    mol.basis = 'sto-3g'
-    mol.build()
+#   mol = gto.Mole()
+#   mol.verbose = 0
+#   mol.output = None
+#   mol.atom = [
+#       ['H', ( 1.,-1.    , 0.   )],
+#       ['H', ( 0.,-1.    ,-1.   )],
+#       ['H', ( 1.,-0.5   ,-1.   )],
+#       ['H', ( 0.,-0.    ,-1.   )],
+#       ['H', ( 1.,-0.5   , 0.   )],
+#       ['H', ( 0., 1.    , 1.   )],
+#   ]
+#   mol.basis = 'sto-3g'
+#   mol.build()
 
-    m = scf.RHF(mol)
-    m.kernel()
-    norb = m.mo_coeff.shape[1]
-    nelec = mol.nelectron - 2
-    ne = mol.nelectron - 2
-    nelec = (nelec//2, nelec-nelec//2)
-    h1e = reduce(numpy.dot, (m.mo_coeff.T, m.get_hcore(), m.mo_coeff))
-    eri = ao2mo.incore.general(m._eri, (m.mo_coeff,)*4, compact=False)
-    eri = eri.reshape(norb,norb,norb,norb)
+#   m = scf.RHF(mol)
+#   m.kernel()
+#   norb = m.mo_coeff.shape[1]
+#   nelec = mol.nelectron - 2
+#   ne = mol.nelectron - 2
+#   nelec = (nelec//2, nelec-nelec//2)
+#   h1e = reduce(numpy.dot, (m.mo_coeff.T, m.get_hcore(), m.mo_coeff))
+#   eri = ao2mo.incore.general(m._eri, (m.mo_coeff,)*4, compact=False)
+#   eri = eri.reshape(norb,norb,norb,norb)
 #    e1, ci0 = kernel(h1e, eri, norb, ne) #FCI kernel
-     
+    
+#   E = []
+#   data = numpy.loadtxt("ft_6_U4.dat") 
+#   i = 0
+#   for T in numpy.linspace(0.01, 4., 40):
+#       E.append([T, data[i]])
+#       i += 1
+#   E = numpy.asarray(E)
+#   numpy.save("1d_6_U4_fci.npy", E)
+#   print E
 
-    T = 0.1
+#   exit()
+    
 
-    _e =kernel_ft_smpl(h1e, eri, norb, nelec, T, m=20, nsmpl=10) 
-
-    print _e
+    u = 4.
+    norb = 8
+    nelec = 8
+    h1e = numpy.zeros((norb, norb))
+    for i in range(norb):
+        h1e[i, (i+1)%norb] = -1.
+        h1e[i, (i-1)%norb] = -1.
+    h1e[0, norb-1] = 1.
+    h1e[norb-1, 0] = 1.
+    eri = numpy.zeros((norb, norb, norb, norb)) 
+    for i in range(norb):
+        eri[i,i,i,i] = u
+    E = [] 
+    for T in numpy.linspace(0.01, 4., 40):
+        _e =kernel_ft_smpl(h1e, eri, norb, nelec, T, m=50, nsmpl=10000) 
+        print _e/norb
+        E.append(_e/norb)
+    E = np.asarray(E)
+    numpy.save("1d_%d_U4.npy"%norb, E)
     exit()
+
     dm1a, dm1b = rdm1s_ft_smpl(h1e, eri, norb, nelec, T, vecgen=0, m=20, nsmpl=10)
     (dm1a_2, dm1b_2), _ = rdm12s_ft_smpl(h1e, eri, norb, nelec, T, vecgen=0, m=20, nsamp=10)
     print numpy.linalg.norm(dm1a-dm1a_2)

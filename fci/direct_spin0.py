@@ -190,6 +190,9 @@ def trans_rdm1s(cibra, ciket, norb, nelec, link_index=None):
                           norb, nelec, link_index)
     rdm1b = rdm.make_rdm1('FCItrans_rdm1b', cibra, ciket,
                           norb, nelec, link_index)
+    rdm1 = rdm.make_rdm1('FCItrans_rdm1', cibra, ciket,
+                          norb, nelec, link_index)
+    print rdm1
     return rdm1a, rdm1b
 
 @pyscf.lib.with_doc(direct_spin1.trans_rdm1.__doc__)
@@ -448,6 +451,13 @@ if __name__ == '__main__':
     h1e = reduce(numpy.dot, (m.mo_coeff.T, m.get_hcore(), m.mo_coeff))
     eri = ao2mo.incore.general(m._eri, (m.mo_coeff,)*4, compact=False)
     e, c = cis.kernel(h1e, eri, norb, nelec)
-    print(e - -15.9977886375)
-    print('t',time.clock())
+#    print(e - -15.9977886375)
+#    print('t',time.clock())
+    c1, c2 = numpy.random.randn(c.size), numpy.random.randn(c.size) 
+    c1 = c1/numpy.linalg.norm(c1)
+    c2 = c2/numpy.linalg.norm(c2)
+    c1 = c1/numpy.linalg.norm(c1)
+    dm1, dm2 = trans_rdm12(c1, c1, nelec, norb)
+    print dm1
+#    print numpy.linalg.norm(dm1-dm2)/dm1.size
 
