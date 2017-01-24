@@ -4,9 +4,9 @@
 '''
 import numpy as np
 import numpy.linalg as nl
-from pyscf.ft_spinless.utils import ftlanczos_spinless as _ftlan
-from pyscf.fci import fci_slow_spinless as spinless
-from pyscf.ft_spinless.utils import logger as log# this is my logger
+from pyscf.ftfci.utils import ftlanczos as _ftlan
+#from pyscf.fci import fci_slow_spinless as spinless
+from pyscf.ftfci.utils import logger as log# this is my logger
 import os
 import random
 from mpi4py import MPI
@@ -23,13 +23,10 @@ def ft_ismpl_E(hop, ci0, T, nw=25, nsamp=2000, M=50, dr=0.5, \
        note that the probability and the energy is given by the same function (ftlan)
        ci0    ---- array, initial vector
        T      ---- float, temperature
-       genci  ---- int, the way to generate new ci
-       nrot   ---- int, steps of rotations on ci0, only used when genci = 1
        nw     ---- number of warm-up steps
        nsamp  ---- number of samples (initial vector generated)
        M      ---- Size of the Krylov space
        dr     ---- the size of the sampling box (or sphere)
-       dtheta ---- step size of rotational sampling
        feprof ---- the file to store the energy profile
        Hdiag  ---- 1d array, the diagonal terms of H
     '''
@@ -52,7 +49,7 @@ def ft_ismpl_E(hop, ci0, T, nw=25, nsamp=2000, M=50, dr=0.5, \
     Nar = 0 # acceptance number
     tp = ftlan(hop, ci0, T, m=20)[1]
     for i in range(nw):
-        ci = gen_nci(ci0, genci, dr=dr, dtheta=dtheta)
+        ci = gen_nci(ci0,dr=dr)
         tp_n = ftlan(hop, ci, T, m=20)[1]
         acc = tp_n/tp 
         if acc >= 1:
@@ -81,7 +78,7 @@ def ft_ismpl_E(hop, ci0, T, nw=25, nsamp=2000, M=50, dr=0.5, \
         E = e/tp
         Eprofile.append(E)
         #print "E", e/tp
-        ci = gen_nci(ci0, genci)
+        ci = gen_nci(ci0)
         e_n, tp_n = ftlan(hop, ci, T, m=M)
         acc = tp_n/tp
         if acc >= 1:
@@ -114,7 +111,7 @@ def ft_ismpl_E(hop, ci0, T, nw=25, nsamp=2000, M=50, dr=0.5, \
     return E  
 
 def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
-         genci=0, nrot=200, nw=25, nsamp=100, M=50, dr=0.5, \
+          nw=25, nsamp=100, M=50, dr=0.5, \
          dtheta=20.0, save_prof=False, prof_file=None, \
          Hdiag=None, verbose=0,**kwargs):
 
@@ -149,27 +146,10 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
     ci0 = ci0.reshape(-1).copy()
     lc = len(ci0)
     rdm_arr = []
-
-    if genci == 0:
-        move = "disp"
-        if verbose > 2:
-            log.info("Using displacement to move to the next wavefunction!")
-    else:
-        move = "rot"
-        if verbose > 2:
-            log.info("Using rotation to move to the next wavefunction!")
-
-    if save_prof:
-        if prof_file is None:
-            if not os.path.exists("./data"):
-                os.makedirs("./data")
-            prof_file = "./data/RDM1prof_%sT%2.2f.npy"%(move, T)
-    # Warm-up
-
     Nar = 0 # acceptance number
     tp_e = ftE(ci0)
     for i in range(nw):
-        ci = gen_nci(ci0, genci)
+        ci = gen_nci(ci0)
         tp_e_n = ftE(ci)
         acc = tp_e_n/tp_e 
         if acc >= 1:
@@ -197,7 +177,7 @@ def ft_ismpl_rdm1s(qud, hop, ci0, T, norb,\
 #        rdm_arr.append(np.linalg.norm((rdm1a+rdm1b)/tp_rdm)/(norb**2.))
         rdm_arr.append(np.linalg.norm((rdm1a+rdm1b)/tp_rdm))
 #        print "E", e/tp
-        ci = gen_nci(ci0, genci)
+        ci = gen_nci(ci0)
         tp_e_n = ftE(ci)
         acc = tp_e_n/tp_e
         if acc >= 1:
@@ -267,7 +247,7 @@ def ft_ismpl_rdm12s(qud, hop, ci0, T, norb, nw=25, nsamp=100, M=50,\
     ci0 = ci0.reshape(-1).copy()
     tp = ftE(ci0, m=20)
     for i in range(nw):
-        ci = gen_nci(ci0, genci)
+        ci = gen_nci(ci0)
         tp_n = ftE(ci,m=20)
         acc = tp_n/tp 
         if acc >= 1:
@@ -290,7 +270,7 @@ def ft_ismpl_rdm12s(qud, hop, ci0, T, norb, nw=25, nsamp=100, M=50,\
         RDM1 += rdm1/tp_rdm
         RDM2 += rdm2/tp_rdm
         E_n += e_n/tp_rdm
-        ci = gen_nci(ci0, genci)
+        ci = gen_nci(ci0)
         tp_e_n = ftE(ci)
         acc = tp_e_n/tp_e
         if acc >= 1:
@@ -328,26 +308,10 @@ def ft_ismpl_rdm12s(qud, hop, ci0, T, norb, nw=25, nsamp=100, M=50,\
 
     return RDM1, RDM2, E_n
 
-def gen_nci(v0, cases, dr=0.5, dtheta=20.):
-    # generate the new ci-vector
-    if cases == 0: # generate new vector by displacement
-        disp = np.random.randn(len(v0)) * dr
-        v1 = v0 + disp
-        return v1/nl.norm(v1)
-    if cases == 1: # generate new vector by rotational
-#        print "generating new vectors by rotation"
-        v1 = v0.copy()
-        for i in range(nrot):
-            addr = np.random.randint(lc, size = 2)         
-            theta = random.random() * dtheta # rotational angle
-            vec = np.zeros(2)
-            vec[0] = v1[addr[0]]
-            vec[1] = v1[addr[1]]
-            rotmat = np.array([[np.cos(theta), -np.sin(theta)],[np.sin(theta), np.cos(theta)]])
-            vec = (rotmat.dot(vec)).copy()
-            v1[addr[0]] = vec[0]
-            v1[addr[1]] = vec[1]
-        return v1/nl.norm(v1) 
+def gen_nci(v0, dr=0.5):
+    disp = np.random.randn(len(v0)) * dr
+    v1 = v0 + disp
+    return v1/nl.norm(v1)
 
 if __name__ == "__main__":
     from functools import reduce
