@@ -42,7 +42,7 @@ def contract_2e(eri, fcivec, norb, nelec, opt=None):
     return fcinew.reshape(fcivec.shape)
 
 
-def absorb_h1e(h1e, g2e, norb, nelec, fac=1):
+def absorb_h1e(h1e, g2e, norb, nelec, fac=1.):
     '''Modify 2e Hamiltonian to include 1e Hamiltonian contribution.
     '''
     h2e = g2e.copy().astype(numpy.complex128) 
@@ -51,7 +51,7 @@ def absorb_h1e(h1e, g2e, norb, nelec, fac=1):
     f1e = h1e - numpy.einsum('jiik->jk', g2e) * .5
     f1e = f1e * (1./(nelec+1e-100))
     f1e = f1e.astype(numpy.complex128)
-	
+      
     for k in range(norb):
         h2e[k,k,:,:] += f1e
         h2e[:,:,k,k] += f1e
@@ -67,9 +67,9 @@ def make_hdiag(h1e, g2e, norb, nelec, opt=None):
 
     hdiag = []
     for aocc in occslista:
-            e1 = h1e[aocc,aocc].sum() 
-            e2 = diagj[aocc][:,aocc].sum() - diagk[aocc][:,aocc].sum() 
-            hdiag.append(e1 + e2*.5)
+        e1 = h1e[aocc,aocc].sum() 
+        e2 = diagj[aocc][:,aocc].sum() - diagk[aocc][:,aocc].sum() 
+        hdiag.append(e1 + e2*.5)
 
     return numpy.array(hdiag)
 
@@ -78,10 +78,10 @@ def kernel(h1e, g2e, norb, nelec):
     na = cistring.num_strings(norb, nelec)
    
     h2e = absorb_h1e(h1e, g2e, norb, nelec, .5)    
-	    
+          
     def hop(c):
-	hc = contract_2e(h2e, c, norb, nelec)
-	return hc.reshape(-1)
+        hc = contract_2e(h2e, c, norb, nelec)
+        return hc.reshape(-1)
     hdiag = make_hdiag(h1e, g2e, norb, nelec)
     precond = lambda x, e, *args: x/(hdiag-e+1e-4)
     
@@ -147,21 +147,25 @@ if __name__ == '__main__':
     from pyscf import scf
     from pyscf import ao2mo
 
-    h1e = numpy.zeros([4,4]) 
-    for i in range(0,4):
-	h1e[i,i] = 0.01
- 	h1e[i,(i+1)%4] = -1.0
- 	h1e[i,(i-1)%4] = -1.0
+    norb = 10
+    nelec = 5
+    h1e = numpy.zeros([norb,norb]) 
+    for i in range(0,norb):
+       h1e[i,i] = 0.0
+       h1e[i,(i+1)%norb] = -1.0
+       h1e[i,(i-1)%norb] = -1.0
 
-    eri = numpy.zeros([4,4,4,4])
-    for i in range(0,4):
- 	j = (i+1)%4
-        eri[i,j,i,j] = 4.0
+    eri = numpy.zeros([norb,norb,norb,norb])
+#   for i in range(0, norb):
+#       eri[i,i,i,i]=4.0
+    for i in range(0,norb):
+        j = (i+1)%norb
+        eri[i,j,i,j] = 1.0
 
-    e1,c = kernel(h1e, eri, 4, 2)
+    e1,c = kernel(h1e, eri, norb, nelec)
    
     print "xxxxxxxxxxxxxxxxxxx" 
-    print e1/4
-    print c
+    print e1*2./norb
+#    print c
 
 
