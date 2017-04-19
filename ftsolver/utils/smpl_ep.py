@@ -15,18 +15,19 @@ MPI_rank=comm.Get_rank()
 MPI_size=comm.Get_size()
 
 
-def smpl_time(H_prod_v,mu_prod_v,T,time_step,nsamp=10000,M=50,**kwargs):
+def smpl_time(H_prod_v,mu_prod_v,T,time_step,ci_shape,nsamp=10000,M=50,**kwargs):
 
     N_per_proc=nsamp//MPI_size
     beta = 1./T
-
+    ld = np.prod(ci_shape)
+ 
     def corr_t(v):
         ct,z = _ftlan.ftlan_mu1c_time(H_prod_v,mu_prod_v,v,T,time_step,m=M)
         return ct,z
     C_t, Z = 0.j, 0.j
     for i in range(N_per_proc):
         ci0  = np.random.randn(ld)    
-        cy,z = corr_t(ci0)
+        ct,z = corr_t(ci0)
         C_t += ct
         Z   += z
     C_t = C_t/(1.*N_per_proc)
@@ -41,16 +42,18 @@ def smpl_time(H_prod_v,mu_prod_v,T,time_step,nsamp=10000,M=50,**kwargs):
     C_t=comm.bcast(C_t, root=0)
     return C_t
 
-def smpl_freq(H_prod_v,mu_prod_v,T,freq_list,nsamp=10000,M=50,**kwargs):
+def smpl_freq(H_prod_v,mu_prod_v,T,freq_list,ci_shape,nsamp=10000,M=50,**kwargs):
 
     #XXX ci0 can be replaced by the shape of it
     N_per_proc=nsamp//MPI_size
     beta = 1./T
+    ld = np.prod(ci_shape)
+    Nstep = freq_list[1]*2
 
     def corr_w(v):
         cw,z = _ftlan.ftlan_mu1c_freq(H_prod_v,mu_prod_v,v,T,freq_list,m=M)
         return cw,z
-    C_w = np.zeros(freq_list[1], dtype=complex64)
+    C_w = np.zeros(Nstep, dtype=np.complex64)
     Z = 0.j
     for i in range(N_per_proc):
         ci0  = np.random.randn(ld)    
