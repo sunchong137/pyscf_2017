@@ -179,7 +179,6 @@ def ftlan_mu1c_freq(H_prod_v, mu_prod_v, v0, T, freq_list, m=40, Min_b=1e-15, Mi
             else:
                 idx = int(delta_e/lstep)+half_Nstep
             C_omega[idx] = bra[:,i].T.conj().dot(mu_prod_v(ket[:,j]))
-            print C_omega
     Z = np.sum(np.exp(-beta*(eps_v))*(phi_v[0,:]*phi_v[0,:].conj()))
 
     return C_omega, Z
