@@ -34,8 +34,8 @@ def kernel_fted(h1e,g2e,norb,nelec,T,symm='RHF',Tmin=1.e-3,\
     if T < Tmin:
         return ew[0]
      
-    Z = np.sum(np.exp(-1.j*ew/T))
-    E = np.sum(np.exp(-1.j*ew/T)*ew)/Z 
+    Z = np.sum(np.exp(-ew/T))
+    E = np.sum(np.exp(-ew/T)*ew)/Z 
     if not dcompl:
         E = E.real
     return E
@@ -68,8 +68,8 @@ def rdm12s_fted(h1e,g2e,norb,nelec,T,symm='RHF',Tmin=1.e-3,\
             return RDM1.real, RDM2.real, ew[0].real
         return RDM1, RDM2, ew[0]
 
-    Z = np.sum(np.exp(-1.j*ew/T))
-    E = np.sum(np.exp(-1.j*ew/T)*ew)/Z 
+    Z = np.sum(np.exp(-ew/T))
+    E = np.sum(np.exp(-ew/T)*ew)/Z 
 
     for i in range(ndim):
         dm1, dm2 = fcisolver.make_rdm12s(ev[:,i].copy(),norb,nelec)
@@ -84,8 +84,8 @@ def rdm12s_fted(h1e,g2e,norb,nelec,T,symm='RHF',Tmin=1.e-3,\
     RDM1*=0.
     RDM2*=0.
     for i in range(ndim):
-        RDM1 += rdm1[i]*np.exp(-1.j*ew[i]/T)
-        RDM2 += rdm2[i]*np.exp(-1.j*ew[i]/T)
+        RDM1 += rdm1[i]*np.exp(-ew[i]/T)
+        RDM2 += rdm2[i]*np.exp(-ew[i]/T)
 
     RDM1 /= Z
     RDM2 /= Z
@@ -115,7 +115,7 @@ def diagH(h1e,g2e,norb,nelec,fcisolver):
     na = cistring.num_strings(norb, neleca)
     nb = cistring.num_strings(norb, nelecb)
     ndim = na*nb
-    eyebas = np.eye(ndim, ndim)
+    eyebas = np.eye(ndim)
     def hop(c):
         hc = fcisolver.contract_2e(h2e, c, norb, nelec)
         return hc.reshape(-1)
@@ -156,6 +156,7 @@ if __name__ == "__main__":
     rdm1, rdm2, e = rdm12s_fted(h1e,g2e,norb,nelec,T=0)
     print e
     print rdm1
+
 #   diagH(h1e,eri,norb,nelec,fci.direct_spin1)
 #   gen_rdm12s(h1e, eri, norb, nelec, fci.direct_spin1, readfile=True )
 #   (rdm1a, rdm1b), (rdm2aa, rdm2ab, rdm2ba, rdm2bb) = fted_rdm12s(h1e, eri, norb, nelec, 0.1, fci.direct_spin1, readfile=True)
