@@ -29,7 +29,6 @@ def kernel_ft_smpl(h1e, g2e, norb, nelec, T, m=50,\
 
     if T < Tmin:
         return fcisolver.kernel(h1e, g2e, norb, nelec)[0]
-    disp = numpy.exp(T) * 0.5 # displacement
     h2e = fcisolver.absorb_h1e(h1e, g2e, norb, nelec, .5)
 
     if symm is 'SOC':
@@ -103,35 +102,41 @@ def rdm12s_ft_smpl(h1e, g2e, norb, nelec, T, \
 
     if T < Tmin:
         e, c = fcisolver.kernel(h1e, g2e, norb, nelec)
-        rdm1, rdm2 = fcisolver.make_rdm12(c, norb, nelec)
-        return numpy.asarray(rdm1), numpy.asarray(rdm2), e
-
-    h2e = fcisolver.absorb_h1e(h1e, g2e, norb, nelec, .5).real
-    if symm is 'SOC':
-        na = cistring.num_strings(norb, nelec)
-        ci0 = numpy.random.randn(na)
+        dm1, dm2 = fcisolver.make_rdm12s(c, norb, nelec)
+        dm1 = numpy.asarray(dm1)
+        dm2 = numpy.asarray(dm2)
     else:
-        na = cistring.num_strings(norb, nelec//2)
-        ci0 = numpy.random.randn(na*na)
-    
-    hdiag = fcisolver.make_hdiag(h1e, g2e, norb, nelec)
+        h2e = fcisolver.absorb_h1e(h1e, g2e, norb, nelec, .5)
+        if symm is 'SOC':
+            na = cistring.num_strings(norb, nelec)
+            ci0 = numpy.random.randn(na)
+        else:
+            na = cistring.num_strings(norb, nelec//2)
+            ci0 = numpy.random.randn(na*na)
+        
+        hdiag = fcisolver.make_hdiag(h1e, g2e, norb, nelec)
+ 
+        hdiag = hdiag-hdiag[0]
+        disp=numpy.exp(T)*0.5
+        ci0 = ci0/numpy.linalg.norm(ci0)
+ 
+        def hop(c):
+            hc = fcisolver.contract_2e(h2e, c, norb, nelec)
+            return hc.reshape(-1)
+ 
+        def qud(v1):
+            dm1, dm2 = fcisolver.make_rdm12s(v1, norb, nelec)
+            return dm1, dm2
+ 
+        
+        dm1, dm2, e = ftsmpl.ft_smpl_rdm12s(qud,hop, ci0, T, norb, nsamp=nsmpl,M=m)
 
-    hdiag = hdiag-hdiag[0]
-    disp=numpy.exp(T)*0.5.real
-    ci0 = ci0/numpy.linalg.norm(ci0)
-
-    def hop(c):
-        hc = fcisolver.contract_2e(h2e, c, norb, nelec)
-        return hc.reshape(-1).real
-
-    def qud(v1):
-        dm1, dm2 = fcisolver.make_rdm12(v1, norb, nelec)
-        return dm1.real, dm2.real 
-
-    dm1, dm2, e = ftsmpl.ft_smpl_rdm12s(qud,\
-        hop, ci0, T, norb, nsamp=nsmpl,M=m)
-
-    return dm1, dm2, e
+    if symm is 'UHF':
+        return dm1, dm2, e
+    elif len(dm1.shape) == 3:
+        return numpy.sum(dm1, axis=0), numpy.sum(dm2, axis=0), e
+    else:
+        return dm1, dm2, e
 
 def test_hubbard(norb, nelec, u, Tlist=None, fname=None, M=50, nsmpl=10000):
     h1e = numpy.zeros((norb, norb))

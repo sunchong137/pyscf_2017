@@ -67,6 +67,7 @@ def rdm12s_fted(h1e,g2e,norb,nelec,T,symm='RHF',Tmin=1.e-3,\
         if not dcompl:
             return RDM1.real, RDM2.real, ew[0].real
         return RDM1, RDM2, ew[0]
+    ew -= ew[0]
 
     Z = np.sum(np.exp(-ew/T))
     E = np.sum(np.exp(-ew/T)*ew)/Z 
@@ -95,7 +96,7 @@ def rdm12s_fted(h1e,g2e,norb,nelec,T,symm='RHF',Tmin=1.e-3,\
         RDM2 = np.sum(RDM2, axis=0)
 
     if not dcompl:
-        E = E.real
+        E = (E+ew[0]).real
         RDM1 = RDM1.real
         RDM2 = RDM2.real
 
@@ -149,11 +150,12 @@ if __name__ == "__main__":
     m.kernel()
     norb = m.mo_coeff.shape[1]
     nelec = mol.nelectron - 2
+#    nelec = 2*norb
     h1e = reduce(np.dot, (m.mo_coeff.T, m.get_hcore(), m.mo_coeff))
     g2e = ao2mo.incore.general(m._eri, (m.mo_coeff,)*4, compact=False)
     g2e = g2e.reshape(norb,norb,norb,norb)
    
-    rdm1, rdm2, e = rdm12s_fted(h1e,g2e,norb,nelec,T=0)
+    rdm1, rdm2, e = rdm12s_fted(h1e,g2e,norb,nelec,T=0.1)
     print e
     print rdm1
 
