@@ -17,6 +17,43 @@ import scipy
 import sys
 import os
 
+def kernel_fted(h1e,g2e,norb,nelec,T,symm='RHF',Tmin=1.e-3,\
+                dcompl=False,**kwargs):
+    if symm is 'RHF':
+        from pyscf.fci import direct_spin1 as fcisolver
+    elif symm is 'SOC':
+        from pyscf.fci import fci_slow_spinless as fcisolver
+        dcompl=True
+    elif symm is 'UHF':
+        from pyscf.fci import direct_uhf as fcisolver
+    else:
+        from pyscf.fci import direct_spin1 as fcisolver
+
+    ews, evs = solve_spectrum(h1e,g2e,norb,fcisolver)
+    mu = solve_mu(h1e,g2e,norb,nelec,fcisolver,T,mu0=0.,ews=ews,evs=evs)
+    if isinstance(T, float):
+        T = np.array([T])
+    Es = []
+    for t in T:
+        if t < Tmin:
+            E = ews[0,0][0]
+        else:
+            Z = 0.
+            E = 0.
+            for na in range(0,norb+1):
+                for nb in range(0,norb+1):
+                    ne = na+nb
+                    ndim = len(ews[na, nb]) 
+                    Z += np.sum(np.exp((-ews[na,nb]+mu*ne)/t))
+                    E += np.sum(np.exp((-ews[na,nb]+mu*ne)/t)*ews[na,nb])
+         
+            E    /= Z
+        Es.append(E)
+
+    Es = np.asarray(Es)
+    if not dcompl:
+        E = E.real
+    return E
 
 def rdm12s_fted(h1e,g2e,norb,nelec,T,symm='RHF',Tmin=1.e-3,\
                 dcompl=False,**kwargs):
@@ -31,7 +68,6 @@ def rdm12s_fted(h1e,g2e,norb,nelec,T,symm='RHF',Tmin=1.e-3,\
     else:
         from pyscf.fci import direct_spin1 as fcisolver
 
-    hdm1 = FD(h1e.copy(),nelec,T)
     ew, ev = diagH(h1e,g2e,norb,nelec,fcisolver)
     RDM1, RDM2 = fcisolver.make_rdm12s(ev[:,0].copy(),norb,nelec)
     RDM1=np.asarray(RDM1,dtype=np.complex128)
