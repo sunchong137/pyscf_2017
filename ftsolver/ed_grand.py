@@ -13,6 +13,7 @@ from pyscf import ao2mo
 from pyscf import fci
 from pyscf.fci import cistring
 from scipy.optimize import minimize
+import datetime
 import scipy
 import sys
 import os
@@ -29,15 +30,15 @@ def kernel_fted(h1e,g2e,norb,nelec,T,symm='RHF',Tmin=1.e-3,\
     else:
         from pyscf.fci import direct_spin1 as fcisolver
 
-    ews, evs = solve_spectrum(h1e,g2e,norb,fcisolver)
-    mu = solve_mu(h1e,g2e,norb,nelec,fcisolver,T,mu0=0.,ews=ews,evs=evs)
     if isinstance(T, float):
         T = np.array([T])
+    ews, evs = solve_spectrum(h1e,g2e,norb,fcisolver)
     Es = []
     for t in T:
         if t < Tmin:
-            E = ews[0,0][0]
+            E = ews[0][0]
         else:
+            mu = solve_mu(h1e,g2e,norb,nelec,fcisolver,T,mu0=0.,ews=ews,evs=evs)
             Z = 0.
             E = 0.
             for na in range(0,norb+1):
@@ -81,25 +82,27 @@ def rdm12s_fted(h1e,g2e,norb,nelec,T,symm='RHF',Tmin=1.e-3,\
         return RDM1, RDM2, ew[0]
 
     ews, evs = solve_spectrum(h1e,g2e,norb,fcisolver)
-    mu = solve_mu(h1e,g2e,norb,nelec,fcisolver,T,mu0=0.,ews=ews,evs=evs)
+    mu = solve_mu(h1e,g2e,norb,nelec,fcisolver,T,mu0=0.,ews=ews)
 
     Z = 0.
     E = 0.
     RDM1*=0.
     RDM2*=0.
 
-    for ne in range(0,2*norb+1):
-        ndim = len(ews[ne]) 
-        rdm1, rdm2 = [], []
-        Z += np.sum(np.exp((-ews[ne]+mu*ne)/T))
-        E += np.sum(np.exp((-ews[ne]+mu*ne)/T)*ews[ne])
-
-        for i in range(ndim):
-            dm1, dm2 = fcisolver.make_rdm12s(evs[ne][:,i].copy(),norb,ne)
-            dm1 = np.asarray(dm1,dtype=np.complex128)
-            dm2 = np.asarray(dm2,dtype=np.complex128)
-            RDM1 += dm1*np.exp((ne*mu-ews[ne][i])/T)
-            RDM2 += dm2*np.exp((ne*mu-ews[ne][i])/T)
+    for na in range(0,norb+1):
+        for nb in range(0,norb+1):
+            ne = na + nb
+            ndim = len(ews[na, nb]) 
+            rdm1, rdm2 = [], []
+            Z += np.sum(np.exp((-ews[na, nb]+mu*ne)/T))
+            E += np.sum(np.exp((-ews[na, nb]+mu*ne)/T)*ews[na,nb])
+         
+            for i in range(ndim):
+                dm1, dm2 = fcisolver.make_rdm12s(evs[na,nb][:,i].copy(),norb,(na,nb))
+                dm1 = np.asarray(dm1,dtype=np.complex128)
+                dm2 = np.asarray(dm2,dtype=np.complex128)
+                RDM1 += dm1*np.exp((ne*mu-ews[na, nb][i])/T)
+                RDM2 += dm2*np.exp((ne*mu-ews[na, nb][i])/T)
 
     E    /= Z
     RDM1 /= Z
@@ -117,26 +120,30 @@ def rdm12s_fted(h1e,g2e,norb,nelec,T,symm='RHF',Tmin=1.e-3,\
 #    return hdm1*2, RDM2, E
 
 def solve_spectrum(h1e,h2e,norb,fcisolver):
-    EW, EV = [], []
-    for ne in range(0, 2*norb+1):
-        ew, ev = diagH(h1e,h2e,norb,ne,fcisolver)
-        EW.append(ew)
-        EV.append(ev)
+    EW = np.empty((norb+1,norb+1), dtype=object)
+    EV = np.empty((norb+1,norb+1), dtype=object)
+    for na in range(0, norb+1):
+        for nb in range(0, norb+1):
+            ew, ev = diagH(h1e,h2e,norb,(na,nb),fcisolver)
+            EW[na, nb] = ew
+            EV[na, nb] = ev
     return EW, EV
 
-def solve_mu(h1e,h2e,norb,nelec,fcisolver,T,mu0=0., ews=None, evs=None):
+def solve_mu(h1e,h2e,norb,nelec,fcisolver,T,mu0=0., ews=None):
     if ews is None:
-        ews, evs = solve_spectrum(h1e,h2e,norb,fcisolver)
+        ews, _ = solve_spectrum(h1e,h2e,norb,fcisolver)
 
     def Ne_average(mu):
         N = 0
         Z = 0.
-        for ne in range(0, 2*norb+1):
-            N += ne * np.sum(np.exp((-ews[ne]+ne*mu)/T))
-            Z += np.sum(np.exp((-ews[ne]+ne*mu)/T))
+        for na in range(0, norb+1):
+            for nb in range(0, norb+1):
+                ne = na + nb
+                N += ne * np.sum(np.exp((-ews[na,nb]+ne*mu)/T))
+                Z += np.sum(np.exp((-ews[na,nb]+ne*mu)/T))
         return N/Z
     
-    mu_n = minimize(lambda mu:(Ne_average(mu)-nelec)**2, mu0,tol=1e-9).x
+    mu_n = minimize(lambda mu:(Ne_average(mu)-nelec)**2, mu0,tol=1e-6).x
     return mu_n
 
 def diagH(h1e,g2e,norb,nelec,fcisolver):
