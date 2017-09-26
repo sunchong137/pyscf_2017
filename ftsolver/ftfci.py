@@ -18,7 +18,7 @@ def kernel_ft_smpl(h1e, g2e, norb, nelec, T, m=50,\
  nsmpl=20000, Tmin=1e-3, symm='SOC', **kwargs):
 
     if symm is 'RHF':
-        from pyscf.fci import direct_spin0 as fcisolver
+        from pyscf.fci import direct_spin1 as fcisolver
     elif symm is 'SOC':
         from pyscf.fci import fci_slow_spinless as fcisolver
     elif symm is 'UHF':
@@ -170,7 +170,16 @@ def test_hubbard(norb, nelec, u, Tlist=None, fname=None, M=50, nsmpl=10000):
      
 if __name__ == '__main__':
 
-    norb = 6
-    nelec = 6
-    u = 6.0
-    test_hubbard(norb, nelec, u)
+    norb = 12
+    nelec = 12
+    u = 4.0
+    h1e = numpy.zeros((norb, norb))
+    for i in range(norb):
+        h1e[i,(i+1)%norb] = -1.0
+        h1e[i,(i-1)%norb] = -1.0
+    g2e = numpy.zeros((norb,)*4)
+    for i in range(norb):
+        g2e[i,i,i,i] = u
+
+    e = kernel_ft_smpl(h1e, g2e, norb, nelec, T=0.0, symm='RHF')
+

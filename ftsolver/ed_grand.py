@@ -1,4 +1,3 @@
-
 '''
 exact diagonalization solver with grand canonical statistics.
 Chong Sun 08/07/17
@@ -12,6 +11,7 @@ from pyscf import scf
 from pyscf import ao2mo
 from pyscf import fci
 from pyscf.fci import cistring
+from pyscf.fci import direct_uhf
 from scipy.optimize import minimize
 import datetime
 import scipy
@@ -36,9 +36,9 @@ def kernel_fted(h1e,g2e,norb,nelec,T,symm='RHF',Tmin=1.e-3,\
     Es = []
     for t in T:
         if t < Tmin:
-            E = ews[0][0]
+            E = ews[nelec/2, nelec/2][0]
         else:
-            mu = solve_mu(h1e,g2e,norb,nelec,fcisolver,T,mu0=0.,ews=ews,evs=evs)
+            mu = solve_mu(h1e,g2e,norb,nelec,fcisolver,t,mu0=0.,ews=ews)
             Z = 0.
             E = 0.
             for na in range(0,norb+1):
@@ -53,8 +53,8 @@ def kernel_fted(h1e,g2e,norb,nelec,T,symm='RHF',Tmin=1.e-3,\
 
     Es = np.asarray(Es)
     if not dcompl:
-        E = E.real
-    return E
+        Es = Es.real
+    return Es
 
 def rdm12s_fted(h1e,g2e,norb,nelec,T,symm='RHF',Tmin=1.e-3,\
                 dcompl=False,**kwargs):
@@ -68,6 +68,7 @@ def rdm12s_fted(h1e,g2e,norb,nelec,T,symm='RHF',Tmin=1.e-3,\
         from pyscf.fci import direct_uhf as fcisolver
     else:
         from pyscf.fci import direct_spin1 as fcisolver
+    
 
     ew, ev = diagH(h1e,g2e,norb,nelec,fcisolver)
     RDM1, RDM2 = fcisolver.make_rdm12s(ev[:,0].copy(),norb,nelec)
@@ -93,7 +94,6 @@ def rdm12s_fted(h1e,g2e,norb,nelec,T,symm='RHF',Tmin=1.e-3,\
         for nb in range(0,norb+1):
             ne = na + nb
             ndim = len(ews[na, nb]) 
-            rdm1, rdm2 = [], []
             Z += np.sum(np.exp((-ews[na, nb]+mu*ne)/T))
             E += np.sum(np.exp((-ews[na, nb]+mu*ne)/T)*ews[na,nb])
          
@@ -150,6 +150,8 @@ def diagH(h1e,g2e,norb,nelec,fcisolver):
     '''
         exactly diagonalize the hamiltonian.
     '''
+    #print datetime.datetime.now(),  '         Starting  diagH'
+    #print 'electron number: ', nelec
     h2e = fcisolver.absorb_h1e(h1e, g2e, norb, nelec, .5)
     if isinstance(nelec, (int, np.integer)):
         nelecb = nelec//2
@@ -160,9 +162,9 @@ def diagH(h1e,g2e,norb,nelec,fcisolver):
     na = cistring.num_strings(norb, neleca)
     nb = cistring.num_strings(norb, nelecb)
     ndim = na*nb
+    #print 'ndim: ', ndim
 
     eyemat = np.eye(ndim)
-
     def hop(c):
         hc = fcisolver.contract_2e(h2e, c, norb, nelec)
         return hc.reshape(-1)
@@ -171,8 +173,11 @@ def diagH(h1e,g2e,norb,nelec,fcisolver):
         hc = hop(eyemat[i])
         Hmat.append(hc)
 
+    #print datetime.datetime.now(),  '         End generating H'
+
     Hmat = np.asarray(Hmat).T
     ew, ev = nl.eigh(Hmat)
+    #print datetime.datetime.now(),  '         End diagonalizing H'
     return ew, ev
 
 def FD(h1e,nelec,T):
@@ -196,6 +201,8 @@ def FD(h1e,nelec,T):
 
     eocc = fermi(mu)
     dm1 = np.dot(ev, np.dot(np.diag(eocc), ev.T.conj()))
+    e = np.sum(ew*eocc)
+    print 'FD energy', e*2
 #   dm1_n = np.zeros_like(dm1)
 #   for i in range(dm1.shape[-1]):
 #       dm1_n += np.einsum('i,j -> ij', ev[:,i],ev[:,i].conj())*eocc[i]
